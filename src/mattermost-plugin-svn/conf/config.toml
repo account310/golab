@@ -1,0 +1,10 @@
+appname = "mattermost-plugin-svn"
+
+[mattermost]
+webhookurl = "http://192.168.3.100:8065/mattermost/hooks/ay1hydt1biga5xhmua1ewrjatr"
+iconurl =  "https://svn.apache.org/repos/asf/subversion/trunk/notes/logo/256-colour/subversion_logo-200x173.png"
+username = "svnbot"
+channel = "svnshow"
+
+verify_cert = true
+
