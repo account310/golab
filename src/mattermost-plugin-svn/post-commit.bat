@@ -5,8 +5,8 @@ REM *************************************************************
 REM Set full path to svnlook.exe
 SET SVNLOOK="D:\Program Files\visualsvn\bin\svnlook.exe"
 REM Set full path to svnplus.exe
-SET POSTEXE="D:\projectLab\matterpluginsvn\bin\svnplus.exe"
-SET POSTCONFIG="D:\projectLab\matterpluginsvn\conf\config.toml"
+SET POSTEXE="D:\projectLab\golab\src\mattermost-plugin-svn\bin\svnplus.exe"
+SET POSTCONFIG="D:\projectLab\golab\src\mattermost-plugin-svn\conf\config.toml"
 REM *************************************************************
 REM * This sets the arguments supplied by Subversion            *
 REM *************************************************************
@@ -17,14 +17,21 @@ REM *************************************************************
 REM * Get Author and comment                                    *
 REM *************************************************************
 setlocal EnableDelayedExpansion
+set LF=^
+
+
 rem get comments
-for /f "tokens=*" %%i in ('%SVNLOOK% log -r %TXN% %REPOS%') do set COMMENT=%%i
+SET COMMENT=
+for /f "tokens=*" %%i in ('%SVNLOOK% log -r %REV% %REPOS%') do set COMMENT=!COMMENT! %%i
 rem get author
-for /f "tokens=*" %%i in ('%SVNLOOK% author -r %TXN% %REPOS%') do set AUTHOR=%%i
+SET AUTHOR=
+for /f "delims=" %%t in ('%SVNLOOK% author %REPOS% -r %REV%') do set AUTHOR=%%t
+rem get file_list
+SET FILELIST=
+for /f "tokens=*" %%i in ('%SVNLOOK% changed %REPOS% -r %REV% ') do set FILELIST=!FILELIST! %%i
 
 REM *************************************************************
 REM * Hand it to commit                                       *
 REM *************************************************************
-"%POSTEXE%" -conf="%POSTCONFIG%" -text="%AUTHOR% committed revision %TXN% to %REPOS%: %COMMENT%"
-pause
-rem exit 0
+"%POSTEXE%" -conf="%POSTCONFIG%" -author="%AUTHOR%" -comments="%COMMENT%" -filelist="%FILELIST%" -projectpath="%REPOS%" -sendtype="" -rev="%REV%"
+exit 0

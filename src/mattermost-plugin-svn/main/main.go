@@ -29,6 +29,7 @@ type Group struct {
 	Authors      []string
 	Channel      string
 	Username     string
+	WebhookURL   string
 }
 
 //Config 配置文件
@@ -45,48 +46,78 @@ type Config struct {
 }
 
 var conf Config // Config 配置文件
-var text string // text 发送文本
 var (
+	rev         string // text 发送文本
 	author      string
 	projectPath string
 	sendType    string // path author
+	comments    string // commit comments
+	filelist    string // commit file list
 )
 
 func main() {
 	realConf := flag.String("conf", "../conf/config.toml", "conf file")
 	// flag.StringVar(&conf.Mattermost.Username, "username", "", "username")
-	flag.StringVar(&text, "text", "123", "text")
+	flag.StringVar(&rev, "rev", "", "text")
 	flag.StringVar(&author, "author", "default", "username")
 	flag.StringVar(&projectPath, "projectpath", "", "svn project path")
 	flag.StringVar(&sendType, "sendtype", "author", "send type eg. path author")
+	flag.StringVar(&comments, "comments", "", "commit comments")
+	flag.StringVar(&filelist, "filelist", "", "commit file list")
 	flag.Parse()
 
 	configor.Load(&conf, *realConf)
 	fmt.Printf("config: %#v", conf)
-	fmt.Printf("text :%s", text)
-	//PostSvn(text, &conf)
+	fmt.Printf("rev :%s", rev)
+	fmt.Printf("comments :%s", comments)
+	fmt.Printf("filelist :%s", filelist)
+	//tfilelist := " A   444.txt A   5555.txt D   tes111.txt U   test.txt A   test1.txt A   trunk/proxy/666.txt A   trunk/web/666.txt U   trunk/web/aaa.txt A   trunk/web_custom/333333.txt"
+	filelist = formatChangedFilelist(filelist)
 	if sendType == "path" {
-		PostSvnByPath(text, &conf)
+		PostSvnByPath(&conf)
 	} else { //其他全部按照人员发
-		PostSvnByAuthor(text, &conf)
+		PostSvnByAuthor(&conf)
 	}
 }
 
+// 因为返回的文件是一行 A aa.txt U bb.txt 这种形式 不好看，格式化一下
+func formatChangedFilelist(filestr string) string {
+	lists := strings.Split(filestr, " ")
+	len := len(lists)
+	result := ""
+	j := 0
+	for i := 0; i < len; i++ {
+		item := lists[i]
+		if strings.Trim(item, " ") != "" {
+			if j&1 == 0 { //如果是偶数
+				result = result + " " + item
+			} else {
+				result = result + " " + item + "\n"
+			}
+			j++
+		}
+	}
+	// fmt.Println("result=", result)
+	return result
+}
+
 // PostSvnByPath svn by path
-func PostSvnByPath(_text string, conf *Config) {
+func PostSvnByPath(conf *Config) {
 	fmt.Println(" post svn by path start")
 	for key, value := range conf.Groups {
 		fmt.Println("key=", key, "value=", value)
 		curChannel := value.Channel
+		curUsername := value.Username
+		webhook := value.WebhookURL
 		isExist := inArray(projectPath, value.Projectpaths)
 		// if 全路径匹配就发送
 		if isExist {
-			SendMessageToMattermost(_text, author, curChannel)
+			SendMessageToMattermost(curUsername, curChannel, webhook)
 		} else {
 			isExist := likeArray(projectPath, value.Projectnames)
 			//如果 全路径不匹配，但是路径包含项目名，也发送
 			if isExist {
-				SendMessageToMattermost(_text, author, curChannel)
+				SendMessageToMattermost(curUsername, curChannel, webhook)
 			}
 		}
 	}
@@ -95,16 +126,16 @@ func PostSvnByPath(_text string, conf *Config) {
 }
 
 // PostSvnByAuthor svn by author
-func PostSvnByAuthor(_text string, conf *Config) {
+func PostSvnByAuthor(conf *Config) {
 	fmt.Println(" post svn by author start")
-	fmt.Println(_text)
-	fmt.Println(conf)
 	for key, value := range conf.Groups {
 		fmt.Println("key=", key, "value=", value)
-		isExist := inArray(author, value.Authors)
+		curUsername := value.Username
 		curChannel := value.Channel
+		webhook := value.WebhookURL
+		isExist := inArray(author, value.Authors)
 		if isExist {
-			SendMessageToMattermost(_text, author, curChannel)
+			SendMessageToMattermost(curUsername, curChannel, webhook)
 		}
 	}
 	fmt.Println(" post svn by author end")
@@ -133,15 +164,34 @@ func likeArray(key string, arrays []string) bool {
 }
 
 // SendMessageToMattermost 发送消息到 mattermost
-func SendMessageToMattermost(_text, userName, channel string) {
-	webhookURL := conf.Mattermost.WebhookURL
+func SendMessageToMattermost(userName, channel, webhookURL string) {
+	//webhookURL := conf.Mattermost.WebhookURL
 	iconURL := conf.Mattermost.Iconurl
 	message := matterhook.Message{
-		Text:      _text,
+		//Text:      "Hello matterhook.\nAnother \nhello matterhook.",
+		Text: "@channel 提交人：" + author + "  **版本号：  " + rev + "**  \n**仓库地址:" +
+			projectPath + "** :+1: :smile: \n**提交内容：" + comments + "**\n",
 		Username:  userName,
 		Channel:   channel,
 		IconEmoji: iconURL,
 	}
+
+	att := matterhook.Attachment{
+		//Fallback: "SVN Commit Log",
+		Text: filelist,
+		// Color:      "#FF8000", // 黄色
+		Color: "#00FF00", // 绿色
+		// Fields: []matterhook.Field{
+		// 	{
+		// 		Title: "changed file",
+		// 		Value: filelist,
+		// 		Short: false,
+		// 	},
+		// },
+		//Title: "detail:",
+		//AuthorName: userName,
+	}
+	message.AddAttachments([]matterhook.Attachment{att})
 	// err := matterhook.Send(webhookURL, message, "utizeyqoppb3xjqwpmbjdz761c")
 	err := matterhook.Send(webhookURL, message, "")
 	if err != nil {
@@ -153,89 +203,89 @@ func SendMessageToMattermost(_text, userName, channel string) {
 }
 
 // PostSvn is post data to mattermost hook url
-func PostSvn(_text string, conf *Config) {
-	fmt.Println(" exe post svn")
-	fmt.Println(conf.APPName)
-	fmt.Println(conf.Mattermost.WebhookURL)
-	fmt.Println(conf.Mattermost.Iconurl)
-	fmt.Println(conf.Mattermost.Username)
-	fmt.Println(conf.Mattermost.Channel)
-	fmt.Println(conf.VerifyCert)
-	//提交信息到mattermost
-	fmt.Println(" Mattermost POST method, posts text to the Mattermost incoming webhook URL")
+// func PostSvn(_text string, conf *Config) {
+// 	fmt.Println(" exe post svn")
+// 	fmt.Println(conf.APPName)
+// 	fmt.Println(conf.Mattermost.WebhookURL)
+// 	fmt.Println(conf.Mattermost.Iconurl)
+// 	fmt.Println(conf.Mattermost.Username)
+// 	fmt.Println(conf.Mattermost.Channel)
+// 	fmt.Println(conf.VerifyCert)
+// 	//提交信息到mattermost
+// 	fmt.Println(" Mattermost POST method, posts text to the Mattermost incoming webhook URL")
 
-	//appName := conf.APPName
-	webhookURL := conf.Mattermost.WebhookURL
-	iconURL := conf.Mattermost.Iconurl
-	userName := conf.Mattermost.Username
-	channel := conf.Mattermost.Channel
-	//verifyCert := conf.VerifyCert
+// 	//appName := conf.APPName
+// 	webhookURL := conf.Mattermost.WebhookURL
+// 	//iconURL := conf.Mattermost.Iconurl
+// 	userName := conf.Mattermost.Username
+// 	channel := conf.Mattermost.Channel
+// 	//verifyCert := conf.VerifyCert
 
-	message := matterhook.Message{
-		Text:      _text,
-		Username:  userName,
-		Channel:   channel,
-		IconEmoji: iconURL,
-	}
-	// err := matterhook.Send(webhookURL, message, "utizeyqoppb3xjqwpmbjdz761c")
-	err := matterhook.Send(webhookURL, message, "")
-	if err != nil {
-		fmt.Println(err)
-	}
+// 	message := matterhook.Message{
+// 		Text:      _text,
+// 		Username:  userName,
+// 		Channel:   channel,
+// 		IconEmoji: ":papa:",
+// 	}
+// 	// err := matterhook.Send(webhookURL, message, "utizeyqoppb3xjqwpmbjdz761c")
+// 	err := matterhook.Send(webhookURL, message, "")
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
 
-	// data := url.Values{}
-	// data.Set("text", _text)
-	// data.Set("username", userName)
-	// data.Set("icon_url", iconURL)
-	// data.Set("channel", channel)
+// 	// data := url.Values{}
+// 	// data.Set("text", _text)
+// 	// data.Set("username", userName)
+// 	// data.Set("icon_url", iconURL)
+// 	// data.Set("channel", channel)
 
-	// // postForm形式
-	// // data := make(url.Values)
-	// // data["text"] = []string{_text}
-	// // data["username"] = []string{userName}
-	// // data["icon_url"] = []string{iconURL}
-	// // data["channel"] = []string{channel}
-	// // fmt.Println(data)
-	// // resp, err := http.PostForm(webhookURL, data)
-	// // if err != nil {
-	// // 	fmt.Println(err.Error())
-	// // 	return
-	// // }
-	// // defer resp.Body.Close()
-	// // fmt.Println("post send success")
+// 	// // postForm形式
+// 	// // data := make(url.Values)
+// 	// // data["text"] = []string{_text}
+// 	// // data["username"] = []string{userName}
+// 	// // data["icon_url"] = []string{iconURL}
+// 	// // data["channel"] = []string{channel}
+// 	// // fmt.Println(data)
+// 	// // resp, err := http.PostForm(webhookURL, data)
+// 	// // if err != nil {
+// 	// // 	fmt.Println(err.Error())
+// 	// // 	return
+// 	// // }
+// 	// // defer resp.Body.Close()
+// 	// // fmt.Println("post send success")
 
-	// // sendData := bytes.NewBuffer(jsonStr)
-	// // buf := bytes.NewBuffer(jsonStr)
-	// // if err != nil {
-	// // 	fmt.Printf("request Encode err %s", err)
-	// // 	return
-	// // }
-	// // //ingore ssl verify
-	// // fmt.Println("values  =", data)
+// 	// // sendData := bytes.NewBuffer(jsonStr)
+// 	// // buf := bytes.NewBuffer(jsonStr)
+// 	// // if err != nil {
+// 	// // 	fmt.Printf("request Encode err %s", err)
+// 	// // 	return
+// 	// // }
+// 	// // //ingore ssl verify
+// 	// // fmt.Println("values  =", data)
 
-	// tr := &http.Transport{
-	// 	TLSClientConfig: &tls.Config{InsecureSkipVerify: verifyCert},
-	// }
-	// client := &http.Client{Transport: tr}
-	// // req, err := http.NewRequest("POST", webhookURL, strings.NewReader(data.Encode()))
-	// req, err := http.NewRequest("POST", webhookURL, strings.NewReader(data.Encode()))
-	// if err != nil {
-	// 	fmt.Printf("request post err %s", err)
-	// 	return
-	// }
-	// //req.Header.Set("Content-Type", "application/json")
-	// req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
-	// resp, err := client.Do(req)
-	// if err != nil {
-	// 	fmt.Printf("response  err %s", err)
-	// 	return
-	// }
-	// defer resp.Body.Close()
-	// fmt.Println("res ==== ", resp)
-	// respBody, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	fmt.Printf("response read err %s", err)
-	// 	return
-	// }
-	// fmt.Printf("response data:%v\n", string(respBody))
-}
+// 	// tr := &http.Transport{
+// 	// 	TLSClientConfig: &tls.Config{InsecureSkipVerify: verifyCert},
+// 	// }
+// 	// client := &http.Client{Transport: tr}
+// 	// // req, err := http.NewRequest("POST", webhookURL, strings.NewReader(data.Encode()))
+// 	// req, err := http.NewRequest("POST", webhookURL, strings.NewReader(data.Encode()))
+// 	// if err != nil {
+// 	// 	fmt.Printf("request post err %s", err)
+// 	// 	return
+// 	// }
+// 	// //req.Header.Set("Content-Type", "application/json")
+// 	// req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+// 	// resp, err := client.Do(req)
+// 	// if err != nil {
+// 	// 	fmt.Printf("response  err %s", err)
+// 	// 	return
+// 	// }
+// 	// defer resp.Body.Close()
+// 	// fmt.Println("res ==== ", resp)
+// 	// respBody, err := ioutil.ReadAll(resp.Body)
+// 	// if err != nil {
+// 	// 	fmt.Printf("response read err %s", err)
+// 	// 	return
+// 	// }
+// 	// fmt.Printf("response data:%v\n", string(respBody))
+// }
