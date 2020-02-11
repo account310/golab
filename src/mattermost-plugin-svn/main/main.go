@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strings"
 
 	"mattermost-plugin-svn/matterhook"
 
@@ -17,10 +18,18 @@ import (
 // 	IconURL  string `json:"icon_url"`
 // }
 
-// //send text Text
 // type Text struct {
 // 	Text Data `json:"text"`
 // }
+
+// Group 项目组
+type Group struct {
+	Projectnames []string
+	Projectpaths []string
+	Authors      []string
+	Channel      string
+	Username     string
+}
 
 //Config 配置文件
 type Config struct {
@@ -32,21 +41,115 @@ type Config struct {
 		Channel    string `default:"Svn"`
 	}
 	VerifyCert bool
+	Groups     map[string]Group
 }
 
-var conf Config
-var text string
+var conf Config // Config 配置文件
+var text string // text 发送文本
+var (
+	author      string
+	projectPath string
+	sendType    string // path author
+)
 
 func main() {
 	realConf := flag.String("conf", "../conf/config.toml", "conf file")
-	//flag.StringVar(&conf, "conf", "../conf/config.toml", "conf file")
 	// flag.StringVar(&conf.Mattermost.Username, "username", "", "username")
 	flag.StringVar(&text, "text", "123", "text")
+	flag.StringVar(&author, "author", "default", "username")
+	flag.StringVar(&projectPath, "projectpath", "", "svn project path")
+	flag.StringVar(&sendType, "sendtype", "author", "send type eg. path author")
 	flag.Parse()
 
 	configor.Load(&conf, *realConf)
 	fmt.Printf("config: %#v", conf)
-	PostSvn(text, &conf)
+	fmt.Printf("text :%s", text)
+	//PostSvn(text, &conf)
+	if sendType == "path" {
+		PostSvnByPath(text, &conf)
+	} else { //其他全部按照人员发
+		PostSvnByAuthor(text, &conf)
+	}
+}
+
+// PostSvnByPath svn by path
+func PostSvnByPath(_text string, conf *Config) {
+	fmt.Println(" post svn by path start")
+	for key, value := range conf.Groups {
+		fmt.Println("key=", key, "value=", value)
+		curChannel := value.Channel
+		isExist := inArray(projectPath, value.Projectpaths)
+		// if 全路径匹配就发送
+		if isExist {
+			SendMessageToMattermost(_text, author, curChannel)
+		} else {
+			isExist := likeArray(projectPath, value.Projectnames)
+			//如果 全路径不匹配，但是路径包含项目名，也发送
+			if isExist {
+				SendMessageToMattermost(_text, author, curChannel)
+			}
+		}
+	}
+	fmt.Println(" post svn by author end")
+	return
+}
+
+// PostSvnByAuthor svn by author
+func PostSvnByAuthor(_text string, conf *Config) {
+	fmt.Println(" post svn by author start")
+	fmt.Println(_text)
+	fmt.Println(conf)
+	for key, value := range conf.Groups {
+		fmt.Println("key=", key, "value=", value)
+		isExist := inArray(author, value.Authors)
+		curChannel := value.Channel
+		if isExist {
+			SendMessageToMattermost(_text, author, curChannel)
+		}
+	}
+	fmt.Println(" post svn by author end")
+	return
+}
+func inArray(input string, arrays []string) bool {
+	length := len(arrays)
+	for i := 0; i < length; i++ {
+		item := arrays[i]
+		if item == input {
+			return true
+		}
+	}
+	return false
+}
+func likeArray(key string, arrays []string) bool {
+	length := len(arrays)
+	for i := 0; i < length; i++ {
+		item := arrays[i]
+		// 数组中如果都存在
+		if strings.Index(key, item) != -1 { //存在子串
+			return true
+		}
+	}
+	return false
+}
+
+// SendMessageToMattermost 发送消息到 mattermost
+func SendMessageToMattermost(_text, userName, channel string) {
+	webhookURL := conf.Mattermost.WebhookURL
+	iconURL := conf.Mattermost.Iconurl
+	message := matterhook.Message{
+		Text:      _text,
+		Username:  userName,
+		Channel:   channel,
+		IconEmoji: iconURL,
+	}
+	// err := matterhook.Send(webhookURL, message, "utizeyqoppb3xjqwpmbjdz761c")
+	err := matterhook.Send(webhookURL, message, "")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("send ok")
+	return
 }
 
 // PostSvn is post data to mattermost hook url
