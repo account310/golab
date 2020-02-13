@@ -34,13 +34,13 @@ type Group struct {
 
 //Config 配置文件
 type Config struct {
-	APPName    string `default:"app name"`
-	Mattermost struct {
-		WebhookURL string
-		Iconurl    string `default:"https://svn.apache.org/repos/asf/subversion/trunk/notes/logo/256-colour/subversion_logo-200x173.png"`
-		Username   string `default:"Svnbot"`
-		Channel    string `default:"Svn"`
-	}
+	APPName string `default:"app name"`
+	// Mattermost struct {
+	// 	WebhookURL string
+	// 	Iconurl    string `default:"https://svn.apache.org/repos/asf/subversion/trunk/notes/logo/256-colour/subversion_logo-200x173.png"`
+	// 	Username   string `default:"Svnbot"`
+	// 	Channel    string `default:"Svn"`
+	// }
 	VerifyCert bool
 	Groups     map[string]Group
 }
@@ -165,15 +165,13 @@ func likeArray(key string, arrays []string) bool {
 
 // SendMessageToMattermost 发送消息到 mattermost
 func SendMessageToMattermost(userName, channel, webhookURL string) {
-	//webhookURL := conf.Mattermost.WebhookURL
-	iconURL := conf.Mattermost.Iconurl
 	message := matterhook.Message{
 		//Text:      "Hello matterhook.\nAnother \nhello matterhook.",
 		Text: "@channel 提交人：" + author + "  **版本号：  " + rev + "**  \n**仓库地址:" +
 			projectPath + "** :+1: :smile: \n**提交内容：" + comments + "**\n",
-		Username:  userName,
-		Channel:   channel,
-		IconEmoji: iconURL,
+		Username: userName,
+		Channel:  channel,
+		//IconEmoji: "",
 	}
 
 	att := matterhook.Attachment{

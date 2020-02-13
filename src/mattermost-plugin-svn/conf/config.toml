@@ -1,23 +1,12 @@
 #项目名称
 appname = "mattermost-plugin-svn"
-
-[mattermost]
-# mattermost hook url
-webhookurl = "http://192.168.3.100:8065/mattermost/hooks/ay1hydt1biga5xhmua1ewrjatr"
-# mattermost icon 地址 目前看似乎没有好事
-iconurl =  "https://svn.apache.org/repos/asf/subversion/trunk/notes/logo/256-colour/subversion_logo-200x173.png"
-# 显示的机器人名
-username = "svnbot"
-# 通知的channel
-channel = "svnshow"
-
 #是否跳过ssl tls验证
 verify_cert = true
 
 [groups]
 [groups.web]
-# mattermost hook url
-webhookurl = "http://192.168.3.100:8065/mattermost/hooks/ay1hydt1biga5xhmua1ewrjatr"
+# mattermost hook url 菜单->Integrations->incoming webhooks->右上角创建 要创建要指定的channel
+webhookurl = "http://192.168.3.100:8065/hooks/us5wkap97ibi5no6req5qoa8cw"
 # 包含的项目名
 projectnames = ["web","web_exchange","web_custom"]
 # 发送的所有路径  全路径 例如 D：/svn/aaa/bbb/，如果全路径匹配就直接发送，
@@ -29,13 +18,16 @@ projectpaths = [
 ]
 #项目组成员
 authors =["majianchun","wangxiao"]
-#项目组 channel 需要操作界面创建
-channel = "svnshow"
-#项目组 机器人名称
+#项目组 channel 需要操作界面创建 -> url上的 channels 后的名字 或者 view info 菜单
+channel = "web-svn"
+# 需要勾选System Console-》Integrations -》intergration management-> Enable integrations to override usernames: true
+# 如果打开， 随便传入什么username 都会显示
+# System Console-》Integrations -》Bot Accounts -》打开创建机器人设置 
+# 此处可以是单独的人名 加上@ 比如 @majianchun 
 username = "websvnbot"
 [groups.server]
 # mattermost hook url
-webhookurl = "http://192.168.3.100:8065/mattermost/hooks/imunw8dhu7bg7x3wksaa1z33ba"
+webhookurl = "http://192.168.3.100:8065/hooks/imunw8dhu7bg7x3wksaa1z33ba"
 # 包含的项目名
 projectnames = ["server"]
 # 发送的所有路径  全路径 例如 D：/svn/aaa/bbb/，如果全路径匹配就直接发送，
