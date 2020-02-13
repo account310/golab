@@ -25,6 +25,10 @@ channel = "web-svn"
 # System Console-》Integrations -》Bot Accounts -》打开创建机器人设置 
 # 此处可以是单独的人名 加上@ 比如 @majianchun 
 username = "websvnbot"
+# 是否格式化 comments
+formatcomment = true
+# 是否格式化 formatfilelist
+formatfilelist = true
 [groups.server]
 # mattermost hook url
 webhookurl = "http://192.168.3.100:8065/hooks/imunw8dhu7bg7x3wksaa1z33ba"
@@ -43,4 +47,8 @@ authors =["xuxiaochen"]
 channel = "town-square"
 #项目组 机器人名称
 username = "serversvnbot"
+# 是否格式化 comments
+formatcomment = true
+# 是否格式化 formatfilelist
+formatfilelist = true
 

@@ -24,12 +24,14 @@ import (
 
 // Group 项目组
 type Group struct {
-	Projectnames []string
-	Projectpaths []string
-	Authors      []string
-	Channel      string
-	Username     string
-	WebhookURL   string
+	Projectnames   []string
+	Projectpaths   []string
+	Authors        []string
+	Channel        string
+	Username       string
+	WebhookURL     string
+	FormatComment  bool
+	FormatFileList bool
 }
 
 //Config 配置文件
@@ -57,7 +59,7 @@ var (
 
 func main() {
 	realConf := flag.String("conf", "../conf/config.toml", "conf file")
-	// flag.StringVar(&conf.Mattermost.Username, "username", "", "username")
+	// flag.BoolVar(&conf.Groups.Group.FormatComment, "formatcomment", true, "FormatComment")
 	flag.StringVar(&rev, "rev", "", "text")
 	flag.StringVar(&author, "author", "default", "username")
 	flag.StringVar(&projectPath, "projectpath", "", "svn project path")
@@ -72,7 +74,6 @@ func main() {
 	fmt.Printf("comments :%s", comments)
 	fmt.Printf("filelist :%s", filelist)
 	//tfilelist := " A   444.txt A   5555.txt D   tes111.txt U   test.txt A   test1.txt A   trunk/proxy/666.txt A   trunk/web/666.txt U   trunk/web/aaa.txt A   trunk/web_custom/333333.txt"
-	filelist = formatChangedFilelist(filelist)
 	if sendType == "path" {
 		PostSvnByPath(&conf)
 	} else { //其他全部按照人员发
@@ -80,44 +81,47 @@ func main() {
 	}
 }
 
-// 因为返回的文件是一行 A aa.txt U bb.txt 这种形式 不好看，格式化一下
-func formatChangedFilelist(filestr string) string {
-	lists := strings.Split(filestr, " ")
-	len := len(lists)
-	result := ""
-	j := 0
-	for i := 0; i < len; i++ {
-		item := lists[i]
-		if strings.Trim(item, " ") != "" {
-			if j&1 == 0 { //如果是偶数
-				result = result + " " + item
-			} else {
-				result = result + " " + item + "\n"
-			}
-			j++
-		}
-	}
-	// fmt.Println("result=", result)
+// 格式化  [___] sad多行 [___] 2.多行 [___] 3.卡里的机房 [___] 5大框架房 [___] 5会计暗坑 [___] 5卡就看见了 [___] 7拉
+func formatComments(commentstr string) string {
+	result := strings.ReplaceAll(commentstr, "[___]", "\n")
+	return result
+}
+
+// 格式化  [___] sad多行 [___] 2.多行 [___] 3.卡里的机房 [___] 5大框架房 [___] 5会计暗坑 [___] 5卡就看见了 [___] 7拉
+func notFormatComments(commentstr string) string {
+	result := strings.ReplaceAll(commentstr, "[___]", " ")
 	return result
 }
 
 // PostSvnByPath svn by path
 func PostSvnByPath(conf *Config) {
 	fmt.Println(" post svn by path start")
+	tmpComments := ""
+	tmpFilelist := ""
 	for key, value := range conf.Groups {
 		fmt.Println("key=", key, "value=", value)
 		curChannel := value.Channel
 		curUsername := value.Username
 		webhook := value.WebhookURL
 		isExist := inArray(projectPath, value.Projectpaths)
+		if value.FormatComment {
+			tmpComments = formatComments(comments)
+		} else {
+			tmpComments = notFormatComments(comments)
+		}
+		if value.FormatFileList {
+			tmpFilelist = formatComments(filelist)
+		} else {
+			tmpFilelist = notFormatComments(filelist)
+		}
 		// if 全路径匹配就发送
 		if isExist {
-			SendMessageToMattermost(curUsername, curChannel, webhook)
+			SendMessageToMattermost(curUsername, curChannel, webhook, tmpComments, tmpFilelist)
 		} else {
 			isExist := likeArray(projectPath, value.Projectnames)
 			//如果 全路径不匹配，但是路径包含项目名，也发送
 			if isExist {
-				SendMessageToMattermost(curUsername, curChannel, webhook)
+				SendMessageToMattermost(curUsername, curChannel, webhook, tmpComments, tmpFilelist)
 			}
 		}
 	}
@@ -128,6 +132,8 @@ func PostSvnByPath(conf *Config) {
 // PostSvnByAuthor svn by author
 func PostSvnByAuthor(conf *Config) {
 	fmt.Println(" post svn by author start")
+	tmpComments := ""
+	tmpFilelist := ""
 	for key, value := range conf.Groups {
 		fmt.Println("key=", key, "value=", value)
 		curUsername := value.Username
@@ -135,7 +141,17 @@ func PostSvnByAuthor(conf *Config) {
 		webhook := value.WebhookURL
 		isExist := inArray(author, value.Authors)
 		if isExist {
-			SendMessageToMattermost(curUsername, curChannel, webhook)
+			if value.FormatComment {
+				tmpComments = formatComments(comments)
+			} else {
+				tmpComments = notFormatComments(comments)
+			}
+			if value.FormatFileList {
+				tmpFilelist = formatComments(filelist)
+			} else {
+				tmpFilelist = notFormatComments(filelist)
+			}
+			SendMessageToMattermost(curUsername, curChannel, webhook, tmpComments, tmpFilelist)
 		}
 	}
 	fmt.Println(" post svn by author end")
@@ -164,19 +180,17 @@ func likeArray(key string, arrays []string) bool {
 }
 
 // SendMessageToMattermost 发送消息到 mattermost
-func SendMessageToMattermost(userName, channel, webhookURL string) {
+func SendMessageToMattermost(userName, channel, webhookURL, _comments, _filelist string) {
 	message := matterhook.Message{
-		//Text:      "Hello matterhook.\nAnother \nhello matterhook.",
 		Text: "@channel 提交人：" + author + "  **版本号：  " + rev + "**  \n**仓库地址:" +
-			projectPath + "** :+1: :smile: \n**提交内容：" + comments + "**\n",
+			projectPath + "** :+1: :smile: \n**提交内容**：" + _comments + "\n",
 		Username: userName,
 		Channel:  channel,
-		//IconEmoji: "",
 	}
 
 	att := matterhook.Attachment{
 		//Fallback: "SVN Commit Log",
-		Text: filelist,
+		Text: _filelist,
 		// Color:      "#FF8000", // 黄色
 		Color: "#00FF00", // 绿色
 		// Fields: []matterhook.Field{
@@ -287,3 +301,24 @@ func SendMessageToMattermost(userName, channel, webhookURL string) {
 // 	// }
 // 	// fmt.Printf("response data:%v\n", string(respBody))
 // }
+
+// 因为返回的文件是一行 A aa.txt U bb.txt 这种形式 不好看，格式化一下
+func formatChangedFilelist(filestr string) string {
+	lists := strings.Split(filestr, " ")
+	len := len(lists)
+	result := ""
+	j := 0
+	for i := 0; i < len; i++ {
+		item := lists[i]
+		if strings.Trim(item, " ") != "" {
+			if j&1 == 0 { //如果是偶数
+				result = result + " " + item
+			} else {
+				result = result + " " + item + "\n"
+			}
+			j++
+		}
+	}
+	// fmt.Println("result=", result)
+	return result
+}

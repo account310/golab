@@ -21,14 +21,14 @@ setlocal EnableDelayedExpansion
 
 rem get comments
 SET COMMENT=
-for /f "tokens=*" %%i in ('%SVNLOOK% log -r %REV% %REPOS%') do set COMMENT=!COMMENT! %%i
+for /f "tokens=*" %%i in ('%SVNLOOK% log -r %REV% %REPOS%') do set COMMENT=!COMMENT! "[___]" %%i
 rem get author
 SET AUTHOR=
 for /f "delims=" %%t in ('%SVNLOOK% author %REPOS% -r %REV%') do set AUTHOR=%%t
 
 rem get file_list
 SET FILELIST=
-for /f "tokens=*" %%i in ('%SVNLOOK% changed %REPOS% -r %REV% ') do set FILELIST=!FILELIST! %%i
+for /f "tokens=*" %%i in ('%SVNLOOK% changed %REPOS% -r %REV% ') do set FILELIST=!FILELIST! "[___]" %%i
 
 REM *************************************************************
 REM * Hand it to commit                                       *
