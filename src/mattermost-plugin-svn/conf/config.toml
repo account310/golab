@@ -8,7 +8,7 @@ verify_cert = true
 # mattermost hook url 菜单->Integrations->incoming webhooks->右上角创建 要创建要指定的channel
 webhookurl = "http://192.168.3.100:8065/hooks/us5wkap97ibi5no6req5qoa8cw"
 # 包含的项目名
-projectnames = ["web","web_exchange","web_custom"]
+projectnames = ["web","web_custom"]
 # 发送的所有路径  全路径 例如 D：/svn/aaa/bbb/，如果全路径匹配就直接发送，
 # 就会去匹配项目名， 如果项目也没有匹配到， 就不发送。
 projectpaths = [
@@ -17,7 +17,7 @@ projectpaths = [
     ""
 ]
 #项目组成员
-authors =["majianchun","wangxiao"]
+authors =["majianchun","aaa"]
 #项目组 channel 需要操作界面创建 -> url上的 channels 后的名字 或者 view info 菜单
 channel = "web-svn"
 # 需要勾选System Console-》Integrations -》intergration management-> Enable integrations to override usernames: true
