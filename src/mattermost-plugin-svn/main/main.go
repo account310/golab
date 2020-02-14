@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"runtime"
 	"strings"
 
 	"mattermost-plugin-svn/matterhook"
@@ -55,6 +56,7 @@ var (
 	sendType    string // path author
 	comments    string // commit comments
 	filelist    string // commit file list
+	sysType     string //系统类型
 )
 
 func main() {
@@ -73,6 +75,15 @@ func main() {
 	fmt.Printf("rev :%s", rev)
 	fmt.Printf("comments :%s", comments)
 	fmt.Printf("filelist :%s", filelist)
+	sysType := runtime.GOOS
+
+	if sysType == "linux" {
+		// LINUX系统
+	}
+
+	if sysType == "windows" {
+		// windows系统
+	}
 	//tfilelist := " A   444.txt A   5555.txt D   tes111.txt U   test.txt A   test1.txt A   trunk/proxy/666.txt A   trunk/web/666.txt U   trunk/web/aaa.txt A   trunk/web_custom/333333.txt"
 	if sendType == "path" {
 		PostSvnByPath(&conf)
@@ -104,15 +115,20 @@ func PostSvnByPath(conf *Config) {
 		curUsername := value.Username
 		webhook := value.WebhookURL
 		isExist := inArray(projectPath, value.Projectpaths)
-		if value.FormatComment {
-			tmpComments = formatComments(comments)
+		if sysType == "windows" {
+			if value.FormatComment {
+				tmpComments = formatComments(comments)
+			} else {
+				tmpComments = notFormatComments(comments)
+			}
+			if value.FormatFileList {
+				tmpFilelist = formatComments(filelist)
+			} else {
+				tmpFilelist = notFormatComments(filelist)
+			}
 		} else {
-			tmpComments = notFormatComments(comments)
-		}
-		if value.FormatFileList {
-			tmpFilelist = formatComments(filelist)
-		} else {
-			tmpFilelist = notFormatComments(filelist)
+			tmpComments = comments
+			tmpFilelist = filelist
 		}
 		// if 全路径匹配就发送
 		if isExist {
@@ -141,15 +157,20 @@ func PostSvnByAuthor(conf *Config) {
 		webhook := value.WebhookURL
 		isExist := inArray(author, value.Authors)
 		if isExist {
-			if value.FormatComment {
-				tmpComments = formatComments(comments)
+			if sysType == "windows" {
+				if value.FormatComment {
+					tmpComments = formatComments(comments)
+				} else {
+					tmpComments = notFormatComments(comments)
+				}
+				if value.FormatFileList {
+					tmpFilelist = formatComments(filelist)
+				} else {
+					tmpFilelist = notFormatComments(filelist)
+				}
 			} else {
-				tmpComments = notFormatComments(comments)
-			}
-			if value.FormatFileList {
-				tmpFilelist = formatComments(filelist)
-			} else {
-				tmpFilelist = notFormatComments(filelist)
+				tmpComments = comments
+				tmpFilelist = filelist
 			}
 			SendMessageToMattermost(curUsername, curChannel, webhook, tmpComments, tmpFilelist)
 		}
