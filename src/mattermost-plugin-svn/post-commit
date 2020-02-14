@@ -25,32 +25,23 @@ REV=$2
 COMMENT=""
 for cmt in `$SVNLOOK log -r $REV $REPOS`;
 do
-  echo "cmt=" $cmt >> /opt/aaa.log
   COMMENT=$COMMENT"  "$cmt
 done
-echo "COMMNET" $COMMENT >> /opt/aaa.log
 # get author
 AUTHOR=""
 for atr in `$SVNLOOK author $REPOS -r $REV`;
 do
-  echo "atr=" $atr>> /opt/aaa.log
   AUTHOR=$atr
 done
- echo "AUTHOR" $AUTHOR>> /opt/aaa.log
 # get file list
 FILELIST=""
 for fst in `$SVNLOOK changed $REPOS -r $REV `;
 do
-  echo "fst=" $fst >> /opt/aaa.log
   FILELIST=$FILELIST"  "$fst
 done
- echo "FILELIST" $FILELIST >> /opt/aaa.log
 
 # *************************************************************
 # * Hand it to commit                                       *
 # *************************************************************
-echo "POSTEXE=" $POSTEXE >> /opt/aaa.log
-echo "POSTCONFIG=" $POSTCONFIG >> /opt/aaa.log
- 
 $POSTEXE -conf="$POSTCONFIG" -author="$AUTHOR" -comments="$COMMENT" -filelist="$FILELIST" -projectpath="$REPOS" -sendtype="" -rev="$REV"
 exit 0
