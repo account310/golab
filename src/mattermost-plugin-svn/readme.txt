@@ -1,6 +1,13 @@
 该插件根据 https://github.com/bitbackofen/Subversion-Integration-for-Mattermost 的golang版本
 具体依赖库自己下载即可。
 
+使用方法:
+1.修改对应的post-commit文件
+配置指定的路径
+2.修改配置文件
+
+
+
 进入到 src/mattermost-plugin-svn/main
 go build -o ../bin/svnplus.exe main.go
 会在同目录生成 main.exe
